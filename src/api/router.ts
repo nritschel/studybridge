@@ -147,6 +147,29 @@ export function createApiHandler(getApplication: ApplicationProvider) {
         return;
       }
 
+      const closeMatch = url.pathname.match(/^\/api\/accounts\/([^/]+)\/close$/);
+      if (method === "POST" && closeMatch?.[1] !== undefined) {
+        const body = await readJson(request);
+        // The actor is always the authenticated session. The body's actorId
+        // confirms intent but may never select a different actor.
+        const actorId = requireString(body.actorId, "actorId");
+        if (actorId !== actor.id) {
+          throw new AppError(
+            "forbidden",
+            "'actorId' must match the signed-in account.",
+          );
+        }
+        const account = await application.accounts.closeOwnAccount(
+          actor.id,
+          decodeURIComponent(closeMatch[1]),
+        );
+        // A closed account is inactive, so its session is no longer valid.
+        application.auth.logout(readSessionToken(request));
+        clearSessionCookie(response);
+        sendJson(response, 200, { account });
+        return;
+      }
+
       sendJson(response, 404, {
         error: "not_found",
         message: "No API route matches this request.",

@@ -29,6 +29,29 @@ describe("QueryService", () => {
     assert.deepEqual(requests.map((request) => request.id), ["request_calculus"]);
   });
 
+  it("matches the tag filter without regard to case and keeps display spelling", async () => {
+    const context = createTestContext();
+    for (const filter of ["calculus", "CALCULUS", "cAlCuLuS", "  calculus  "]) {
+      const requests = await context.queries.listRequests("mentor_morgan", {
+        tag: filter,
+      });
+      assert.deepEqual(
+        requests.map((request) => request.id),
+        ["request_calculus"],
+        `tag filter '${filter}' should match the Calculus request`,
+      );
+      assert.deepEqual(requests[0]?.tags, ["Calculus", "Tutoring"]);
+    }
+  });
+
+  it("returns nothing when the tag filter matches no request", async () => {
+    const context = createTestContext();
+    const requests = await context.queries.listRequests("mentor_morgan", {
+      tag: "calc",
+    });
+    assert.deepEqual(requests, []);
+  });
+
   it("hides staff note contents from a student", async () => {
     const context = createTestContext();
     const request = await context.queries.getRequest(
@@ -38,6 +61,18 @@ describe("QueryService", () => {
 
     assert.deepEqual(request.notes.map((note) => note.id), ["note_public"]);
     assert.equal(request.visibleNoteCount, 1);
+  });
+
+  it("counts only viewer-visible notes in list summaries", async () => {
+    const context = createTestContext();
+
+    const studentList = await context.queries.listRequests("student_steve");
+    const studentPlanning = studentList.find((request) => request.id === "request_planning");
+    assert.equal(studentPlanning?.visibleNoteCount, 1);
+
+    const mentorList = await context.queries.listRequests("mentor_morgan");
+    const mentorPlanning = mentorList.find((request) => request.id === "request_planning");
+    assert.equal(mentorPlanning?.visibleNoteCount, 2);
   });
 
   it("shows public and staff notes to a mentor", async () => {

@@ -32,7 +32,12 @@ their records, and do not put the former name or email into the audit details.
 
 Anonymization is idempotent: repeating it returns the already anonymized
 account without creating another audit event. Only a coordinator may anonymize a
-different account. A future self-service endpoint is described in work item 004.
+different account.
+
+Any active account may close itself through `POST /api/accounts/:id/close`.
+Closing follows the anonymization rules above and ends the current session. The
+JSON body carries an `actorId` that must match the signed-in account; it confirms
+intent but can never select a different actor.
 
 ## Requests
 

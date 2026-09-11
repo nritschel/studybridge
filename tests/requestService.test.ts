@@ -138,6 +138,37 @@ describe("RequestService", () => {
     assert.deepEqual(await context.repository.listAuditEvents(), []);
   });
 
+  it("forbids an inactive mentor from re-claiming a request still assigned to them", async () => {
+    const context = createTestContext();
+    const before = await context.repository.getRequest("request_inactive_claim");
+    assert.equal(before?.assigneeId, "mentor_inactive");
+
+    await assertAppError(
+      () => context.requests.claimRequest("mentor_inactive", "request_inactive_claim"),
+      "forbidden",
+    );
+
+    // The existing assignment is retained; only the new claim is refused.
+    const after = await context.repository.getRequest("request_inactive_claim");
+    assert.deepEqual(after, before);
+    assert.equal(after?.assigneeId, "mentor_inactive");
+    assert.equal(after?.status, "claimed");
+    assert.deepEqual(await context.repository.listAuditEvents(), []);
+  });
+
+  it("forbids an inactive mentor from claiming an open request", async () => {
+    const context = createTestContext();
+    await assertAppError(
+      () => context.requests.claimRequest("mentor_inactive", "request_calculus"),
+      "forbidden",
+    );
+    assert.equal(
+      (await context.repository.getRequest("request_calculus"))?.assigneeId,
+      undefined,
+    );
+    assert.deepEqual(await context.repository.listAuditEvents(), []);
+  });
+
   it("does not allow a resolved request to be claimed", async () => {
     const context = createTestContext();
     await assertAppError(
@@ -197,6 +228,44 @@ describe("RequestService", () => {
       visibility: "public",
     });
     assert.equal(JSON.stringify(events).includes("sketch"), false);
+  });
+
+  it("measures the note limit in Unicode code points, not UTF-16 units", async () => {
+    // Each emoji is one code point but two UTF-16 code units, so 300 of them
+    // have a .length of 600 while staying well under the 500 code point limit.
+    const emojiBody = "📚".repeat(300);
+    assert.equal(emojiBody.length, 600);
+
+    const accepted = createTestContext();
+    const note = await accepted.requests.addNote({
+      actorId: "mentor_morgan",
+      requestId: "request_calculus",
+      body: emojiBody,
+      visibility: "public",
+    });
+    assert.equal(note.body, emojiBody);
+
+    const atLimit = createTestContext();
+    const exactly500 = await atLimit.requests.addNote({
+      actorId: "mentor_morgan",
+      requestId: "request_calculus",
+      body: "📚".repeat(500),
+      visibility: "public",
+    });
+    assert.equal([...exactly500.body].length, 500);
+
+    const rejected = createTestContext();
+    await assertAppError(
+      () =>
+        rejected.requests.addNote({
+          actorId: "mentor_morgan",
+          requestId: "request_calculus",
+          body: "📚".repeat(501),
+          visibility: "public",
+        }),
+      "bad_request",
+    );
+    assert.deepEqual(await rejected.repository.listAuditEvents(), []);
   });
 
   it("rejects empty notes and student-authored notes", async () => {

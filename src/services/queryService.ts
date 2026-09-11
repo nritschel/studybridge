@@ -31,17 +31,16 @@ export class QueryService {
       .filter((request) =>
         filters.status === undefined ? true : request.status === filters.status,
       )
-      // Intentionally case-sensitive. Work item 001 describes the bug.
-      .filter((request) =>
-        filters.tag === undefined ? true : request.tags.includes(filters.tag),
-      )
+      .filter((request) => matchesTagFilter(request, filters.tag))
       .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt));
 
     return Promise.all(
       visible.map(async (request) => {
         const notes = await this.repository.listNotesForRequest(request.id);
-        // Work item 002: this count currently reveals staff-note existence.
-        return this.toSummary(request, accountsById, notes.length);
+        // Count only notes the viewer may see, so a student never learns how
+        // many staff-only notes exist (see docs/product-rules.md).
+        const visibleNoteCount = notes.filter((note) => canViewNote(viewer, note)).length;
+        return this.toSummary(request, accountsById, visibleNoteCount);
       }),
     );
   }
@@ -104,6 +103,21 @@ export class QueryService {
       visibleNoteCount,
     };
   }
+}
+
+/**
+ * Tag filters match without regard to case (see docs/product-rules.md). The
+ * stored tags keep their original spelling; only the comparison is folded.
+ */
+function matchesTagFilter(request: HelpRequest, tag: string | undefined): boolean {
+  if (tag === undefined) {
+    return true;
+  }
+  const wanted = tag.trim().toLocaleLowerCase();
+  if (wanted.length === 0) {
+    return true;
+  }
+  return request.tags.some((candidate) => candidate.toLocaleLowerCase() === wanted);
 }
 
 function accountSummary(account: Account): AccountSummary {
