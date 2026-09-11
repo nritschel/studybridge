@@ -50,3 +50,11 @@ export function canAddNote(actor: Account): boolean {
 export function canAnonymizeAccount(actor: Account): boolean {
   return actor.active && actor.role === "coordinator";
 }
+
+/**
+ * Any active account may close (anonymize) itself. Closing a different
+ * account requires canAnonymizeAccount.
+ */
+export function canCloseOwnAccount(actor: Account, targetId: string): boolean {
+  return actor.active && actor.id === targetId;
+}
