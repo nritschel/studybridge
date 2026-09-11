@@ -177,8 +177,10 @@ export class RequestService {
     if (body.length === 0) {
       throw badRequest("A note cannot be empty.");
     }
-    // Intentionally counts UTF-16 code units. Work item 003 describes the bug.
-    if (body.length > 500) {
+    // The limit is 500 Unicode code points (see docs/product-rules.md).
+    // String.length counts UTF-16 code units, which double-counts emoji and
+    // other astral characters, so iterate the string to count code points.
+    if (codePointLength(body) > 500) {
       throw badRequest("A note cannot be longer than 500 characters.");
     }
 
@@ -222,6 +224,14 @@ export class RequestService {
       details,
     };
   }
+}
+
+function codePointLength(value: string): number {
+  let count = 0;
+  for (const _ of value) {
+    count += 1;
+  }
+  return count;
 }
 
 function normalizedTags(values: string[]): string[] {

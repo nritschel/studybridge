@@ -199,6 +199,44 @@ describe("RequestService", () => {
     assert.equal(JSON.stringify(events).includes("sketch"), false);
   });
 
+  it("measures the note limit in Unicode code points, not UTF-16 units", async () => {
+    // Each emoji is one code point but two UTF-16 code units, so 300 of them
+    // have a .length of 600 while staying well under the 500 code point limit.
+    const emojiBody = "📚".repeat(300);
+    assert.equal(emojiBody.length, 600);
+
+    const accepted = createTestContext();
+    const note = await accepted.requests.addNote({
+      actorId: "mentor_morgan",
+      requestId: "request_calculus",
+      body: emojiBody,
+      visibility: "public",
+    });
+    assert.equal(note.body, emojiBody);
+
+    const atLimit = createTestContext();
+    const exactly500 = await atLimit.requests.addNote({
+      actorId: "mentor_morgan",
+      requestId: "request_calculus",
+      body: "📚".repeat(500),
+      visibility: "public",
+    });
+    assert.equal([...exactly500.body].length, 500);
+
+    const rejected = createTestContext();
+    await assertAppError(
+      () =>
+        rejected.requests.addNote({
+          actorId: "mentor_morgan",
+          requestId: "request_calculus",
+          body: "📚".repeat(501),
+          visibility: "public",
+        }),
+      "bad_request",
+    );
+    assert.deepEqual(await rejected.repository.listAuditEvents(), []);
+  });
+
   it("rejects empty notes and student-authored notes", async () => {
     const first = createTestContext();
     await assertAppError(
