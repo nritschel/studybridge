@@ -4,6 +4,7 @@ import {
   canClaimRequest,
   canCreateRequest,
   canResolveRequest,
+  isStaff,
 } from "../domain/policies.js";
 import type {
   AuditEvent,
@@ -86,6 +87,12 @@ export class RequestService {
       requireRequest(this.repository, requestId),
     ]);
 
+    // Authorization comes first: an inactive or non-staff account must be
+    // refused even when the claim would otherwise be an idempotent no-op on a
+    // request that is still assigned to it.
+    if (!actor.active || !isStaff(actor)) {
+      throw forbidden("Only active mentors and coordinators can claim requests.");
+    }
     if (request.status === "resolved") {
       throw conflict("Resolved requests cannot be claimed.");
     }

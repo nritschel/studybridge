@@ -138,6 +138,37 @@ describe("RequestService", () => {
     assert.deepEqual(await context.repository.listAuditEvents(), []);
   });
 
+  it("forbids an inactive mentor from re-claiming a request still assigned to them", async () => {
+    const context = createTestContext();
+    const before = await context.repository.getRequest("request_inactive_claim");
+    assert.equal(before?.assigneeId, "mentor_inactive");
+
+    await assertAppError(
+      () => context.requests.claimRequest("mentor_inactive", "request_inactive_claim"),
+      "forbidden",
+    );
+
+    // The existing assignment is retained; only the new claim is refused.
+    const after = await context.repository.getRequest("request_inactive_claim");
+    assert.deepEqual(after, before);
+    assert.equal(after?.assigneeId, "mentor_inactive");
+    assert.equal(after?.status, "claimed");
+    assert.deepEqual(await context.repository.listAuditEvents(), []);
+  });
+
+  it("forbids an inactive mentor from claiming an open request", async () => {
+    const context = createTestContext();
+    await assertAppError(
+      () => context.requests.claimRequest("mentor_inactive", "request_calculus"),
+      "forbidden",
+    );
+    assert.equal(
+      (await context.repository.getRequest("request_calculus"))?.assigneeId,
+      undefined,
+    );
+    assert.deepEqual(await context.repository.listAuditEvents(), []);
+  });
+
   it("does not allow a resolved request to be claimed", async () => {
     const context = createTestContext();
     await assertAppError(
