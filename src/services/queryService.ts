@@ -37,8 +37,10 @@ export class QueryService {
     return Promise.all(
       visible.map(async (request) => {
         const notes = await this.repository.listNotesForRequest(request.id);
-        // Work item 002: this count currently reveals staff-note existence.
-        return this.toSummary(request, accountsById, notes.length);
+        // Count only notes the viewer may see, so a student never learns how
+        // many staff-only notes exist (see docs/product-rules.md).
+        const visibleNoteCount = notes.filter((note) => canViewNote(viewer, note)).length;
+        return this.toSummary(request, accountsById, visibleNoteCount);
       }),
     );
   }

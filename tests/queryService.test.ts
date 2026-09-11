@@ -63,6 +63,18 @@ describe("QueryService", () => {
     assert.equal(request.visibleNoteCount, 1);
   });
 
+  it("counts only viewer-visible notes in list summaries", async () => {
+    const context = createTestContext();
+
+    const studentList = await context.queries.listRequests("student_steve");
+    const studentPlanning = studentList.find((request) => request.id === "request_planning");
+    assert.equal(studentPlanning?.visibleNoteCount, 1);
+
+    const mentorList = await context.queries.listRequests("mentor_morgan");
+    const mentorPlanning = mentorList.find((request) => request.id === "request_planning");
+    assert.equal(mentorPlanning?.visibleNoteCount, 2);
+  });
+
   it("shows public and staff notes to a mentor", async () => {
     const context = createTestContext();
     const request = await context.queries.getRequest(
