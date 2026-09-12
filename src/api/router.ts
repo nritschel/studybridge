@@ -16,7 +16,13 @@ import {
   readSessionToken,
   setSessionCookie,
 } from "./authCookie.js";
-import { readJson, requireString, sendError, sendJson } from "./http.js";
+import {
+  readJson,
+  readOptionalJson,
+  requireString,
+  sendError,
+  sendJson,
+} from "./http.js";
 
 export type ApplicationProvider = () => Promise<Application>;
 
@@ -132,6 +138,32 @@ export function createApiHandler(getApplication: ApplicationProvider) {
           visibility: visibility as NoteVisibility,
         });
         sendJson(response, 201, { note });
+        return;
+      }
+
+      const closeMatch = url.pathname.match(
+        /^\/api\/accounts\/([^/]+)\/close$/,
+      );
+      if (method === "POST" && closeMatch?.[1] !== undefined) {
+        // The acting account always comes from the session. Reject an actor
+        // named in the body instead of silently ignoring it, so a client that
+        // tries to choose its own actor learns why that is not allowed.
+        const body = await readOptionalJson(request);
+        if (body.actorId !== undefined) {
+          throw new AppError(
+            "bad_request",
+            "The acting account comes from the session cookie; do not send 'actorId'.",
+          );
+        }
+        const account = await application.accounts.closeOwnAccount(
+          actor.id,
+          decodeURIComponent(closeMatch[1]),
+        );
+        // The closed account is inactive, so its session can never be used
+        // again. End it now rather than leaving the browser to hit a 401.
+        application.auth.logout(readSessionToken(request));
+        clearSessionCookie(response);
+        sendJson(response, 200, { account });
         return;
       }
 

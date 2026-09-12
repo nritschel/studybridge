@@ -27,3 +27,11 @@ export async function requireRequest(
 export function iso(date: Date): string {
   return date.toISOString();
 }
+
+/**
+ * Comparison key for a tag. Tags keep their original spelling for display, but
+ * deduplication and filtering must not depend on capitalization.
+ */
+export function tagKey(tag: string): string {
+  return tag.trim().toLocaleLowerCase();
+}

@@ -398,7 +398,6 @@ function renderNoteForm(requestId: string): HTMLElement {
   const textarea = document.createElement("textarea");
   textarea.name = "body";
   textarea.rows = 4;
-  textarea.maxLength = 700;
   textarea.required = true;
   label.append(textarea);
 

@@ -4,6 +4,7 @@ import {
   canClaimRequest,
   canCreateRequest,
   canResolveRequest,
+  isStaff,
 } from "../domain/policies.js";
 import type {
   AuditEvent,
@@ -15,7 +16,7 @@ import type {
 import type { StudyBridgeRepository } from "../repositories/interfaces.js";
 import type { Clock } from "../utils/clock.js";
 import type { IdSource } from "../utils/id.js";
-import { iso, requireAccount, requireRequest } from "./helpers.js";
+import { iso, requireAccount, requireRequest, tagKey } from "./helpers.js";
 
 export class RequestService {
   constructor(
@@ -86,17 +87,19 @@ export class RequestService {
       requireRequest(this.repository, requestId),
     ]);
 
-    if (request.status === "resolved") {
-      throw conflict("Resolved requests cannot be claimed.");
+    // Authorize before the idempotent shortcut below. An inactive mentor who
+    // still holds an assignment must get a forbidden result, not a silent no-op.
+    if (!canClaimRequest(actor, request)) {
+      if (!actor.active || !isStaff(actor)) {
+        throw forbidden("Only active mentors and coordinators can claim requests.");
+      }
+      if (request.status === "resolved") {
+        throw conflict("Resolved requests cannot be claimed.");
+      }
+      throw conflict("This request is already assigned to another mentor.");
     }
     if (request.assigneeId === actor.id) {
       return request;
-    }
-    if (request.assigneeId !== undefined) {
-      throw conflict("This request is already assigned to another mentor.");
-    }
-    if (!canClaimRequest(actor, request)) {
-      throw forbidden("Only active mentors and coordinators can claim requests.");
     }
 
     const occurredAt = iso(this.clock.now());
@@ -177,8 +180,9 @@ export class RequestService {
     if (body.length === 0) {
       throw badRequest("A note cannot be empty.");
     }
-    // Intentionally counts UTF-16 code units. Work item 003 describes the bug.
-    if (body.length > 500) {
+    // The limit is 500 Unicode code points. String.length counts UTF-16 code
+    // units, which would charge two for every emoji, so count code points.
+    if ([...body].length > 500) {
       throw badRequest("A note cannot be longer than 500 characters.");
     }
 
@@ -234,7 +238,7 @@ function normalizedTags(values: string[]): string[] {
     if (tag.length > 30) {
       throw badRequest("A request tag cannot be longer than 30 characters.");
     }
-    const key = tag.toLocaleLowerCase();
+    const key = tagKey(tag);
     if (!unique.has(key)) {
       unique.set(key, tag);
     }

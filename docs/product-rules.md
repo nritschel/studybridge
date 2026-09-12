@@ -7,8 +7,8 @@ including the ones that are inconvenient to implement.
 
 ## Roles
 
-- A **student** can create requests, view their own requests, and see public
-  notes on those requests.
+- A **student** can create requests, view their own requests, see public
+  notes on those requests, and close their own account.
 - A **mentor** can view all requests, claim open requests, resolve requests
   assigned to them, and add public or staff notes.
 - A **coordinator** has mentor abilities, can resolve any active request, and
@@ -32,7 +32,16 @@ their records, and do not put the former name or email into the audit details.
 
 Anonymization is idempotent: repeating it returns the already anonymized
 account without creating another audit event. Only a coordinator may anonymize a
-different account. A future self-service endpoint is described in work item 004.
+different account.
+
+An active student may close their own account with
+`POST /api/accounts/:id/close`, where `:id` is the signed-in student's own
+account ID. Closing is the same anonymization described above and records an
+`account.closed` audit event. The acting account comes from the session cookie;
+the route rejects a request that tries to name an actor in the body. A
+successful closure ends the session, and a closed account can no longer sign
+in. Staff accounts are not closed through self-service; a coordinator anonymizes
+those.
 
 ## Requests
 
