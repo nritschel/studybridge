@@ -23,12 +23,7 @@ export function canClaimRequest(
   actor: Account,
   request: HelpRequest,
 ): boolean {
-  return (
-    actor.active &&
-    isStaff(actor) &&
-    request.status !== "resolved" &&
-    (request.assigneeId === undefined || request.assigneeId === actor.id)
-  );
+  return actor.active && isStaff(actor) && request.status !== "resolved";
 }
 
 export function canResolveRequest(

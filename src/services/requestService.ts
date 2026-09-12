@@ -89,14 +89,14 @@ export class RequestService {
     if (request.status === "resolved") {
       throw conflict("Resolved requests cannot be claimed.");
     }
+    if (!canClaimRequest(actor, request)) {
+      throw forbidden("Only active mentors and coordinators can claim requests.");
+    }
     if (request.assigneeId === actor.id) {
       return request;
     }
     if (request.assigneeId !== undefined) {
       throw conflict("This request is already assigned to another mentor.");
-    }
-    if (!canClaimRequest(actor, request)) {
-      throw forbidden("Only active mentors and coordinators can claim requests.");
     }
 
     const occurredAt = iso(this.clock.now());
