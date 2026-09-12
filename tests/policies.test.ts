@@ -51,6 +51,13 @@ describe("authorization policies", () => {
   it("never grants capabilities to an inactive account", () => {
     assert.equal(canViewRequest(inactiveMentor, openRequest), false);
     assert.equal(canClaimRequest(inactiveMentor, openRequest), false);
+    assert.equal(
+      canClaimRequest(
+        inactiveMentor,
+        required(state.requests, "request_inactive_claim"),
+      ),
+      false,
+    );
     assert.equal(canCreateRequest({ ...student, active: false }), false);
     assert.equal(canAddNote(inactiveMentor), false);
   });

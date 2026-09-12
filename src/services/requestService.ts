@@ -4,6 +4,7 @@ import {
   canClaimRequest,
   canCreateRequest,
   canResolveRequest,
+  isStaff,
 } from "../domain/policies.js";
 import type {
   AuditEvent,
@@ -86,17 +87,19 @@ export class RequestService {
       requireRequest(this.repository, requestId),
     ]);
 
-    if (request.status === "resolved") {
-      throw conflict("Resolved requests cannot be claimed.");
+    // Authorize before the idempotent shortcut below. An inactive mentor who
+    // still holds an assignment must get a forbidden result, not a silent no-op.
+    if (!canClaimRequest(actor, request)) {
+      if (!actor.active || !isStaff(actor)) {
+        throw forbidden("Only active mentors and coordinators can claim requests.");
+      }
+      if (request.status === "resolved") {
+        throw conflict("Resolved requests cannot be claimed.");
+      }
+      throw conflict("This request is already assigned to another mentor.");
     }
     if (request.assigneeId === actor.id) {
       return request;
-    }
-    if (request.assigneeId !== undefined) {
-      throw conflict("This request is already assigned to another mentor.");
-    }
-    if (!canClaimRequest(actor, request)) {
-      throw forbidden("Only active mentors and coordinators can claim requests.");
     }
 
     const occurredAt = iso(this.clock.now());

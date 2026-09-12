@@ -138,6 +138,41 @@ describe("RequestService", () => {
     assert.deepEqual(await context.repository.listAuditEvents(), []);
   });
 
+  it("rejects a repeated claim from an inactive mentor", async () => {
+    const context = createTestContext();
+    const before = await context.repository.getRequest("request_inactive_claim");
+    assert.equal(before?.assigneeId, "mentor_inactive");
+
+    // The mentor already holds this assignment, so the claim would be a
+    // no-op. It must still be refused: inactive accounts have no capabilities.
+    await assertAppError(
+      () =>
+        context.requests.claimRequest("mentor_inactive", "request_inactive_claim"),
+      "forbidden",
+    );
+
+    // Inactive accounts cannot claim anything else either.
+    await assertAppError(
+      () => context.requests.claimRequest("mentor_inactive", "request_calculus"),
+      "forbidden",
+    );
+    await assertAppError(
+      () => context.requests.claimRequest("mentor_inactive", "request_planning"),
+      "forbidden",
+    );
+
+    // Becoming inactive does not unassign the request.
+    assert.deepEqual(
+      await context.repository.getRequest("request_inactive_claim"),
+      before,
+    );
+    assert.equal(
+      (await context.repository.getRequest("request_calculus"))?.status,
+      "open",
+    );
+    assert.deepEqual(await context.repository.listAuditEvents(), []);
+  });
+
   it("does not allow a resolved request to be claimed", async () => {
     const context = createTestContext();
     await assertAppError(
