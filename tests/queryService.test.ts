@@ -68,6 +68,49 @@ describe("QueryService", () => {
     assert.equal(request.visibleNoteCount, 1);
   });
 
+  it("counts only notes the viewer may see in list summaries", async () => {
+    const context = createTestContext();
+
+    // request_planning has one public note and one staff note.
+    const studentList = await context.queries.listRequests("student_steve");
+    const planningForStudent = studentList.find(
+      (request) => request.id === "request_planning",
+    );
+    assert.equal(planningForStudent?.visibleNoteCount, 1);
+
+    const studentDetail = await context.queries.getRequest(
+      "student_steve",
+      "request_planning",
+    );
+    assert.equal(planningForStudent?.visibleNoteCount, studentDetail.notes.length);
+
+    const mentorList = await context.queries.listRequests("mentor_morgan");
+    const planningForMentor = mentorList.find(
+      (request) => request.id === "request_planning",
+    );
+    assert.equal(planningForMentor?.visibleNoteCount, 2);
+
+    // A request whose only note is staff-only must look note-free to the student.
+    await context.requests.addNote({
+      actorId: "coordinator_priya",
+      requestId: "request_calculus",
+      body: "Staff-only handoff plan.",
+      visibility: "staff",
+    });
+    const studentAfter = await context.queries.listRequests("student_steve");
+    assert.equal(
+      studentAfter.find((request) => request.id === "request_calculus")
+        ?.visibleNoteCount,
+      0,
+    );
+    const mentorAfter = await context.queries.listRequests("mentor_morgan");
+    assert.equal(
+      mentorAfter.find((request) => request.id === "request_calculus")
+        ?.visibleNoteCount,
+      1,
+    );
+  });
+
   it("shows public and staff notes to a mentor", async () => {
     const context = createTestContext();
     const request = await context.queries.getRequest(
