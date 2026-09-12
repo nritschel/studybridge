@@ -50,3 +50,11 @@ export function canAddNote(actor: Account): boolean {
 export function canAnonymizeAccount(actor: Account): boolean {
   return actor.active && actor.role === "coordinator";
 }
+
+/**
+ * Self-service closure. The service checks that the target is the actor's own
+ * account; this policy decides which roles may use the flow at all.
+ */
+export function canCloseOwnAccount(actor: Account): boolean {
+  return actor.active && actor.role === "student";
+}

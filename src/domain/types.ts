@@ -51,7 +51,8 @@ export interface AuditEvent {
     | "request.claimed"
     | "request.resolved"
     | "request.note_added"
-    | "account.anonymized";
+    | "account.anonymized"
+    | "account.closed";
   targetType: "request" | "account";
   targetId: string;
   occurredAt: string;

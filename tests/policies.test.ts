@@ -4,6 +4,7 @@ import {
   canAddNote,
   canAnonymizeAccount,
   canClaimRequest,
+  canCloseOwnAccount,
   canCreateRequest,
   canResolveRequest,
   canViewNote,
@@ -35,6 +36,10 @@ describe("authorization policies", () => {
     assert.equal(canAddNote(mentor), true);
     assert.equal(canAnonymizeAccount(mentor), false);
     assert.equal(canAnonymizeAccount(coordinator), true);
+    assert.equal(canCloseOwnAccount(student), true);
+    assert.equal(canCloseOwnAccount(mentor), false);
+    assert.equal(canCloseOwnAccount(coordinator), false);
+    assert.equal(canCloseOwnAccount({ ...student, active: false }), false);
   });
 
   it("lets students view only their own requests", () => {

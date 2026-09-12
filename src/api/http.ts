@@ -26,6 +26,21 @@ export function sendJson(
 export async function readJson(
   request: IncomingMessage,
 ): Promise<Record<string, unknown>> {
+  return parseJsonObject(await readBody(request));
+}
+
+/**
+ * Like readJson, but an empty body is treated as an empty object. Use it for
+ * actions whose meaning comes entirely from the URL and the session.
+ */
+export async function readOptionalJson(
+  request: IncomingMessage,
+): Promise<Record<string, unknown>> {
+  const text = await readBody(request);
+  return text.trim().length === 0 ? {} : parseJsonObject(text);
+}
+
+async function readBody(request: IncomingMessage): Promise<string> {
   const chunks: Buffer[] = [];
   let bytes = 0;
 
@@ -38,8 +53,12 @@ export async function readJson(
     chunks.push(buffer);
   }
 
+  return Buffer.concat(chunks).toString("utf8");
+}
+
+function parseJsonObject(text: string): Record<string, unknown> {
   try {
-    const parsed: unknown = JSON.parse(Buffer.concat(chunks).toString("utf8"));
+    const parsed: unknown = JSON.parse(text);
     if (parsed === null || Array.isArray(parsed) || typeof parsed !== "object") {
       throw new Error("not an object");
     }
