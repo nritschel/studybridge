@@ -72,4 +72,60 @@ describe("AccountService", () => {
     assert.deepEqual(second, first);
     assert.equal((await context.repository.listAuditEvents()).length, 1);
   });
+
+  it("lets a student close their own account", async () => {
+    const context = createTestContext();
+
+    const result = await context.accounts.anonymizeAccount(
+      "student_steve",
+      "student_steve",
+    );
+
+    assert.equal(result.id, "student_steve");
+    assert.equal(result.displayName, "Former member");
+    assert.equal(result.email, "closed+student_steve@invalid.studybridge");
+    assert.equal(result.active, false);
+    assert.equal(result.anonymizedAt, NOW);
+
+    const events = await context.repository.listAuditEvents();
+    assert.equal(events.length, 1);
+    assert.equal(events[0]?.actorId, "student_steve");
+    assert.equal(events[0]?.targetId, "student_steve");
+    assert.deepEqual(events[0]?.details, {});
+  });
+
+  it("retains the requests of a student who closed their own account", async () => {
+    const context = createTestContext();
+    await context.accounts.anonymizeAccount("student_steve", "student_steve");
+
+    const state = context.repository.snapshot();
+    assert.equal(
+      state.accounts.some((account) => account.id === "student_steve"),
+      true,
+    );
+    assert.equal(
+      state.requests.filter((request) => request.requesterId === "student_steve")
+        .length,
+      2,
+    );
+  });
+
+  it("does not let a student close another student's account", async () => {
+    const context = createTestContext();
+
+    await assert.rejects(
+      () => context.accounts.anonymizeAccount("student_steve", "student_lee"),
+      (error: unknown) => {
+        assert.ok(error instanceof AppError);
+        assert.equal(error.code, "forbidden");
+        return true;
+      },
+    );
+
+    assert.equal(
+      (await context.repository.getAccount("student_lee"))?.displayName,
+      "Lee Learner",
+    );
+    assert.deepEqual(await context.repository.listAuditEvents(), []);
+  });
 });

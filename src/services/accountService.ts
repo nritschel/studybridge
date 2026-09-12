@@ -22,8 +22,10 @@ export class AccountService {
       requireAccount(this.repository, targetId),
     ]);
 
-    if (!canAnonymizeAccount(actor)) {
-      throw forbidden("Only an active coordinator can anonymize an account.");
+    if (!canAnonymizeAccount(actor, target)) {
+      throw forbidden(
+        "You may close your own account; only an active coordinator can close another.",
+      );
     }
     if (target.anonymizedAt !== undefined) {
       return target;

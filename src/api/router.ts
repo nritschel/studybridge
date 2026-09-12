@@ -147,6 +147,29 @@ export function createApiHandler(getApplication: ApplicationProvider) {
         return;
       }
 
+      const closeMatch = url.pathname.match(/^\/api\/accounts\/([^/]+)\/close$/);
+      if (method === "POST" && closeMatch?.[1] !== undefined) {
+        const body = await readJson(request);
+        if (requireString(body.actorId, "actorId") !== actor.id) {
+          throw new AppError(
+            "forbidden",
+            "'actorId' must match the signed-in account.",
+          );
+        }
+
+        const targetId = decodeURIComponent(closeMatch[1]);
+        const account = await application.accounts.anonymizeAccount(
+          actor.id,
+          targetId,
+        );
+        if (targetId === actor.id) {
+          application.auth.logout(readSessionToken(request));
+          clearSessionCookie(response);
+        }
+        sendJson(response, 200, { account });
+        return;
+      }
+
       sendJson(response, 404, {
         error: "not_found",
         message: "No API route matches this request.",
