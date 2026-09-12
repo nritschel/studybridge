@@ -177,8 +177,9 @@ export class RequestService {
     if (body.length === 0) {
       throw badRequest("A note cannot be empty.");
     }
-    // Intentionally counts UTF-16 code units. Work item 003 describes the bug.
-    if (body.length > 500) {
+    // The limit is 500 Unicode code points. String.length counts UTF-16 code
+    // units, which would charge two for every emoji, so count code points.
+    if ([...body].length > 500) {
       throw badRequest("A note cannot be longer than 500 characters.");
     }
 
