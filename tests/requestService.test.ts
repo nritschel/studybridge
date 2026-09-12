@@ -224,6 +224,36 @@ describe("RequestService", () => {
       "forbidden",
     );
   });
+
+  it("accepts a note of 500 Unicode code points", async () => {
+    const context = createTestContext();
+    const body = "\u{1F600}".repeat(500);
+
+    const note = await context.requests.addNote({
+      actorId: "mentor_morgan",
+      requestId: "request_calculus",
+      body,
+      visibility: "public",
+    });
+
+    assert.equal(note.body, body);
+    assert.equal([...note.body].length, 500);
+  });
+
+  it("rejects a note longer than 500 Unicode code points", async () => {
+    const context = createTestContext();
+
+    await assertAppError(
+      () =>
+        context.requests.addNote({
+          actorId: "mentor_morgan",
+          requestId: "request_calculus",
+          body: "\u{1F600}".repeat(501),
+          visibility: "public",
+        }),
+      "bad_request",
+    );
+  });
 });
 
 async function assertAppError(
