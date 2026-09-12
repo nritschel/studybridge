@@ -29,6 +29,17 @@ describe("QueryService", () => {
     assert.deepEqual(requests.map((request) => request.id), ["request_calculus"]);
   });
 
+  it("matches a tag filter without regard to case", async () => {
+    const context = createTestContext();
+    const requests = await context.queries.listRequests("mentor_morgan", {
+      tag: "calculus",
+    });
+
+    assert.deepEqual(requests.map((request) => request.id), ["request_calculus"]);
+    // The card still shows the tag the student typed.
+    assert.deepEqual(requests[0]?.tags, ["Calculus", "Tutoring"]);
+  });
+
   it("hides staff note contents from a student", async () => {
     const context = createTestContext();
     const request = await context.queries.getRequest(
@@ -51,6 +62,23 @@ describe("QueryService", () => {
       ["note_public", "note_staff"],
     );
     assert.equal(request.visibleNoteCount, 2);
+  });
+
+  it("does not count staff notes in a student's list summary", async () => {
+    const context = createTestContext();
+    const requests = await context.queries.listRequests("student_steve");
+    const planning = requests.find((request) => request.id === "request_planning");
+
+    // request_planning has one public and one staff note.
+    assert.equal(planning?.visibleNoteCount, 1);
+  });
+
+  it("counts both note kinds in a mentor's list summary", async () => {
+    const context = createTestContext();
+    const requests = await context.queries.listRequests("mentor_morgan");
+    const planning = requests.find((request) => request.id === "request_planning");
+
+    assert.equal(planning?.visibleNoteCount, 2);
   });
 
   it("forbids one student from opening another student's request", async () => {

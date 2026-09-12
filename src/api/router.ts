@@ -135,6 +135,21 @@ export function createApiHandler(getApplication: ApplicationProvider) {
         return;
       }
 
+      const closeMatch = url.pathname.match(
+        /^\/api\/accounts\/([^/]+)\/close$/,
+      );
+      if (method === "POST" && closeMatch?.[1] !== undefined) {
+        const account = await application.accounts.closeOwnAccount(
+          actor.id,
+          decodeURIComponent(closeMatch[1]),
+        );
+        // The account is now inactive, so end the session it was signed in with.
+        application.auth.logout(readSessionToken(request));
+        clearSessionCookie(response);
+        sendJson(response, 200, { account });
+        return;
+      }
+
       const anonymizeMatch = url.pathname.match(
         /^\/api\/accounts\/([^/]+)\/anonymize$/,
       );

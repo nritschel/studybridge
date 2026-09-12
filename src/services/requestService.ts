@@ -86,6 +86,11 @@ export class RequestService {
       requireRequest(this.repository, requestId),
     ]);
 
+    // Authorization comes first: an inactive mentor must not reach the
+    // idempotent no-op below for a request assigned before deactivation.
+    if (!canClaimRequest(actor)) {
+      throw forbidden("Only active mentors and coordinators can claim requests.");
+    }
     if (request.status === "resolved") {
       throw conflict("Resolved requests cannot be claimed.");
     }
@@ -94,9 +99,6 @@ export class RequestService {
     }
     if (request.assigneeId !== undefined) {
       throw conflict("This request is already assigned to another mentor.");
-    }
-    if (!canClaimRequest(actor, request)) {
-      throw forbidden("Only active mentors and coordinators can claim requests.");
     }
 
     const occurredAt = iso(this.clock.now());
@@ -177,8 +179,7 @@ export class RequestService {
     if (body.length === 0) {
       throw badRequest("A note cannot be empty.");
     }
-    // Intentionally counts UTF-16 code units. Work item 003 describes the bug.
-    if (body.length > 500) {
+    if ([...body].length > 500) {
       throw badRequest("A note cannot be longer than 500 characters.");
     }
 

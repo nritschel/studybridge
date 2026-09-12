@@ -19,16 +19,10 @@ export function canCreateRequest(actor: Account): boolean {
   return actor.active && actor.role === "student";
 }
 
-export function canClaimRequest(
-  actor: Account,
-  request: HelpRequest,
-): boolean {
-  return (
-    actor.active &&
-    isStaff(actor) &&
-    request.status !== "resolved" &&
-    (request.assigneeId === undefined || request.assigneeId === actor.id)
-  );
+// Claiming is a staff capability. Whether a particular request is still
+// claimable is request state, which the service reports as a conflict.
+export function canClaimRequest(actor: Account): boolean {
+  return actor.active && isStaff(actor);
 }
 
 export function canResolveRequest(
@@ -49,4 +43,11 @@ export function canAddNote(actor: Account): boolean {
 
 export function canAnonymizeAccount(actor: Account): boolean {
   return actor.active && actor.role === "coordinator";
+}
+
+// Self-closure is limited to students. Staff accounts are closed by a
+// coordinator, so a coordinator cannot lock the program out by closing the
+// last account able to anonymize anyone.
+export function canCloseOwnAccount(actor: Account, targetId: string): boolean {
+  return actor.active && actor.role === "student" && actor.id === targetId;
 }

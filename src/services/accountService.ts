@@ -1,5 +1,5 @@
 import { forbidden } from "../domain/errors.js";
-import { canAnonymizeAccount } from "../domain/policies.js";
+import { canAnonymizeAccount, canCloseOwnAccount } from "../domain/policies.js";
 import type { Account, AuditEvent } from "../domain/types.js";
 import type { StudyBridgeRepository } from "../repositories/interfaces.js";
 import type { Clock } from "../utils/clock.js";
@@ -25,6 +25,28 @@ export class AccountService {
     if (!canAnonymizeAccount(actor)) {
       throw forbidden("Only an active coordinator can anonymize an account.");
     }
+    return this.anonymize(actor, target);
+  }
+
+  /**
+   * Self-service closure for a student. Closing an account is the same
+   * anonymization use case, so it keeps the account ID and leaves requests,
+   * notes, and audit events in place. The acting account comes from the
+   * session; the target ID is only checked against it, never loaded, so this
+   * endpoint cannot be used to probe for other accounts.
+   */
+  async closeOwnAccount(actorId: string, targetId: string): Promise<Account> {
+    const actor = await requireAccount(this.repository, actorId);
+
+    if (!canCloseOwnAccount(actor, targetId)) {
+      throw forbidden(
+        "You can only close your own student account. Ask a coordinator to close a staff account.",
+      );
+    }
+    return this.anonymize(actor, actor);
+  }
+
+  private async anonymize(actor: Account, target: Account): Promise<Account> {
     if (target.anonymizedAt !== undefined) {
       return target;
     }

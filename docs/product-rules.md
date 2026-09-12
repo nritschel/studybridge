@@ -32,7 +32,16 @@ their records, and do not put the former name or email into the audit details.
 
 Anonymization is idempotent: repeating it returns the already anonymized
 account without creating another audit event. Only a coordinator may anonymize a
-different account. A future self-service endpoint is described in work item 004.
+different account.
+
+A student may close their own account through `POST /api/accounts/:id/close`.
+The acting account comes from the session, and the path ID must match it;
+closing any other account is forbidden, whether or not that ID exists. Staff
+accounts are closed by a coordinator instead, so closing the last coordinator
+cannot leave the program without one. Self-service
+closure is the same anonymization use case and records the same audit event,
+with the closing account as both actor and target. Closure ends the session, and
+a closed account is inactive, so it cannot close itself a second time.
 
 ## Requests
 
@@ -43,13 +52,15 @@ Requests move through `open -> claimed -> resolved`.
 - A title and description are required. Titles may contain at most 120
   characters, descriptions at most 1,200 characters, and requests at most five
   distinct tags of 30 characters each.
-- A mentor may claim an open request.
+- A mentor may claim an open request. An inactive account may not claim
+  anything, including a request already assigned to it.
 - Claiming a request already assigned to the same mentor is a successful
   no-op. It should not create a second audit event.
 - Claiming a request assigned to somebody else is a conflict.
 - A mentor may resolve a request assigned to them; a coordinator may resolve any
   open or claimed request.
 - Resolved requests cannot be claimed or resolved again.
+- A request assigned to an account that later becomes inactive stays assigned.
 
 Tag matching in filters is case-insensitive. Tags keep their original spelling
 for display.

@@ -4,6 +4,7 @@ import {
   canAddNote,
   canAnonymizeAccount,
   canClaimRequest,
+  canCloseOwnAccount,
   canCreateRequest,
   canResolveRequest,
   canViewNote,
@@ -35,6 +36,9 @@ describe("authorization policies", () => {
     assert.equal(canAddNote(mentor), true);
     assert.equal(canAnonymizeAccount(mentor), false);
     assert.equal(canAnonymizeAccount(coordinator), true);
+    assert.equal(canClaimRequest(student), false);
+    assert.equal(canClaimRequest(mentor), true);
+    assert.equal(canClaimRequest(coordinator), true);
   });
 
   it("lets students view only their own requests", () => {
@@ -45,9 +49,19 @@ describe("authorization policies", () => {
 
   it("never grants capabilities to an inactive account", () => {
     assert.equal(canViewRequest(inactiveMentor, openRequest), false);
-    assert.equal(canClaimRequest(inactiveMentor, openRequest), false);
+    assert.equal(canClaimRequest(inactiveMentor), false);
     assert.equal(canCreateRequest({ ...student, active: false }), false);
     assert.equal(canAddNote(inactiveMentor), false);
+  });
+
+  it("lets only a student close their own account", () => {
+    assert.equal(canCloseOwnAccount(student, student.id), true);
+    assert.equal(canCloseOwnAccount(student, otherStudent.id), false);
+    assert.equal(canCloseOwnAccount(coordinator, student.id), false);
+    assert.equal(canCloseOwnAccount(inactiveMentor, inactiveMentor.id), false);
+    // Staff close their accounts through a coordinator instead.
+    assert.equal(canCloseOwnAccount(mentor, mentor.id), false);
+    assert.equal(canCloseOwnAccount(coordinator, coordinator.id), false);
   });
 
   it("shows staff notes only to staff", () => {

@@ -146,6 +146,26 @@ describe("RequestService", () => {
     );
   });
 
+  it("rejects a repeated claim from a mentor who became inactive", async () => {
+    const context = createTestContext();
+    const before = await context.repository.getRequest("request_inactive_claim");
+
+    await assertAppError(
+      () => context.requests.claimRequest(
+        "mentor_inactive",
+        "request_inactive_claim",
+      ),
+      "forbidden",
+    );
+
+    // The request stays assigned; deactivation does not release it.
+    assert.deepEqual(
+      await context.repository.getRequest("request_inactive_claim"),
+      before,
+    );
+    assert.deepEqual(await context.repository.listAuditEvents(), []);
+  });
+
   it("lets a mentor resolve a request assigned to them", async () => {
     const context = createTestContext();
 
@@ -197,6 +217,31 @@ describe("RequestService", () => {
       visibility: "public",
     });
     assert.equal(JSON.stringify(events).includes("sketch"), false);
+  });
+
+  it("measures the note limit in Unicode code points", async () => {
+    const context = createTestContext();
+
+    // 300 emoji are 600 UTF-16 code units but only 300 code points.
+    const note = await context.requests.addNote({
+      actorId: "mentor_morgan",
+      requestId: "request_calculus",
+      body: "\u{1F642}".repeat(300),
+      visibility: "public",
+    });
+    assert.equal([...note.body].length, 300);
+
+    await assertAppError(
+      () =>
+        context.requests.addNote({
+          actorId: "mentor_morgan",
+          requestId: "request_calculus",
+          body: "\u{1F642}".repeat(501),
+          visibility: "public",
+        }),
+      "bad_request",
+    );
+    assert.equal((await context.repository.listAuditEvents()).length, 1);
   });
 
   it("rejects empty notes and student-authored notes", async () => {

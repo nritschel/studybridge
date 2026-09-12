@@ -398,7 +398,10 @@ function renderNoteForm(requestId: string): HTMLElement {
   const textarea = document.createElement("textarea");
   textarea.name = "body";
   textarea.rows = 4;
-  textarea.maxLength = 700;
+  // The server limit is 500 Unicode code points; maxLength counts UTF-16 code
+  // units, and a code point costs at most two of them. This stays a soft cap
+  // so the browser never blocks a note the server would accept.
+  textarea.maxLength = 1000;
   textarea.required = true;
   label.append(textarea);
 

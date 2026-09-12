@@ -25,23 +25,28 @@ export class QueryService {
       this.repository.listAccounts(),
     ]);
     const accountsById = new Map(accounts.map((account) => [account.id, account]));
+    // Tags keep their original spelling for display, so the filter compares
+    // folded copies instead.
+    const tagFilter = filters.tag?.trim().toLocaleLowerCase();
 
     const visible = requests
       .filter((request) => canViewRequest(viewer, request))
       .filter((request) =>
         filters.status === undefined ? true : request.status === filters.status,
       )
-      // Intentionally case-sensitive. Work item 001 describes the bug.
       .filter((request) =>
-        filters.tag === undefined ? true : request.tags.includes(filters.tag),
+        tagFilter === undefined || tagFilter.length === 0
+          ? true
+          : request.tags.some((tag) => tag.toLocaleLowerCase() === tagFilter),
       )
       .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt));
 
     return Promise.all(
       visible.map(async (request) => {
         const notes = await this.repository.listNotesForRequest(request.id);
-        // Work item 002: this count currently reveals staff-note existence.
-        return this.toSummary(request, accountsById, notes.length);
+        // A summary must not reveal that staff notes exist.
+        const visibleNotes = notes.filter((note) => canViewNote(viewer, note));
+        return this.toSummary(request, accountsById, visibleNotes.length);
       }),
     );
   }
