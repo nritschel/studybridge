@@ -48,8 +48,8 @@ export class QueryService {
     return Promise.all(
       visible.map(async (request) => {
         const notes = await this.repository.listNotesForRequest(request.id);
-        // Work item 002: this count currently reveals staff-note existence.
-        return this.toSummary(request, accountsById, notes.length);
+        const visibleNotes = notes.filter((note) => canViewNote(viewer, note));
+        return this.toSummary(request, accountsById, visibleNotes.length);
       }),
     );
   }

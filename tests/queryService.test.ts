@@ -79,6 +79,26 @@ describe("QueryService", () => {
     assert.equal(request.visibleNoteCount, 2);
   });
 
+  it("counts only student-visible notes in list summaries", async () => {
+    const context = createTestContext();
+    const requests = await context.queries.listRequests("student_steve");
+    const planning = requests.find(
+      (request) => request.id === "request_planning",
+    );
+
+    assert.equal(planning?.visibleNoteCount, 1);
+  });
+
+  it("counts staff notes in list summaries for staff", async () => {
+    const context = createTestContext();
+    const requests = await context.queries.listRequests("mentor_morgan");
+    const planning = requests.find(
+      (request) => request.id === "request_planning",
+    );
+
+    assert.equal(planning?.visibleNoteCount, 2);
+  });
+
   it("forbids one student from opening another student's request", async () => {
     const context = createTestContext();
     await assert.rejects(
