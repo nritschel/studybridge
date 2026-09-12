@@ -15,7 +15,7 @@ import type {
 import type { StudyBridgeRepository } from "../repositories/interfaces.js";
 import type { Clock } from "../utils/clock.js";
 import type { IdSource } from "../utils/id.js";
-import { iso, requireAccount, requireRequest } from "./helpers.js";
+import { iso, requireAccount, requireRequest, tagKey } from "./helpers.js";
 
 export class RequestService {
   constructor(
@@ -234,7 +234,7 @@ function normalizedTags(values: string[]): string[] {
     if (tag.length > 30) {
       throw badRequest("A request tag cannot be longer than 30 characters.");
     }
-    const key = tag.toLocaleLowerCase();
+    const key = tagKey(tag);
     if (!unique.has(key)) {
       unique.set(key, tag);
     }

@@ -20,13 +20,41 @@ describe("QueryService", () => {
     assert.equal(requests.length, 5);
   });
 
-  it("filters by an exact status and tag", async () => {
+  it("filters by status and tag together", async () => {
     const context = createTestContext();
     const requests = await context.queries.listRequests("mentor_morgan", {
       status: "open",
       tag: "Calculus",
     });
     assert.deepEqual(requests.map((request) => request.id), ["request_calculus"]);
+  });
+
+  it("matches the tag filter without regard to case", async () => {
+    const context = createTestContext();
+
+    for (const tag of ["calculus", "CALCULUS", "cAlCuLuS"]) {
+      const requests = await context.queries.listRequests("mentor_morgan", { tag });
+      assert.deepEqual(
+        requests.map((request) => request.id),
+        ["request_calculus"],
+        `tag filter '${tag}' should match the 'Calculus' tag`,
+      );
+      // Display keeps the stored spelling; only matching ignores case.
+      assert.deepEqual(requests[0]?.tags, ["Calculus", "Tutoring"]);
+    }
+
+    const planning = await context.queries.listRequests("mentor_morgan", {
+      tag: "planning",
+    });
+    assert.deepEqual(
+      planning.map((request) => request.id).sort(),
+      ["request_inactive_claim", "request_planning"],
+    );
+
+    const none = await context.queries.listRequests("mentor_morgan", {
+      tag: "geometry",
+    });
+    assert.deepEqual(none, []);
   });
 
   it("hides staff note contents from a student", async () => {

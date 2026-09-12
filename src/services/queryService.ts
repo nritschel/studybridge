@@ -10,7 +10,7 @@ import type {
   RequestSummary,
 } from "../domain/types.js";
 import type { StudyBridgeRepository } from "../repositories/interfaces.js";
-import { requireAccount, requireRequest } from "./helpers.js";
+import { requireAccount, requireRequest, tagKey } from "./helpers.js";
 
 export class QueryService {
   constructor(private readonly repository: StudyBridgeRepository) {}
@@ -25,15 +25,16 @@ export class QueryService {
       this.repository.listAccounts(),
     ]);
     const accountsById = new Map(accounts.map((account) => [account.id, account]));
+    const tagFilter = filters.tag === undefined ? undefined : tagKey(filters.tag);
 
     const visible = requests
       .filter((request) => canViewRequest(viewer, request))
       .filter((request) =>
         filters.status === undefined ? true : request.status === filters.status,
       )
-      // Intentionally case-sensitive. Work item 001 describes the bug.
       .filter((request) =>
-        filters.tag === undefined ? true : request.tags.includes(filters.tag),
+        tagFilter === undefined ||
+        request.tags.some((tag) => tagKey(tag) === tagFilter),
       )
       .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt));
 
