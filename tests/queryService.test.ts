@@ -29,6 +29,32 @@ describe("QueryService", () => {
     assert.deepEqual(requests.map((request) => request.id), ["request_calculus"]);
   });
 
+  it("matches tag filters regardless of case", async () => {
+    const context = createTestContext();
+    const requests = await context.queries.listRequests("mentor_morgan", {
+      tag: "calculus",
+    });
+    assert.deepEqual(requests.map((request) => request.id), ["request_calculus"]);
+  });
+
+  it("matches a multi-word tag filter regardless of case", async () => {
+    const context = createTestContext();
+    const requests = await context.queries.listRequests("mentor_morgan", {
+      tag: "STUDY SKILLS",
+    });
+    assert.deepEqual(requests.map((request) => request.id), ["request_planning"]);
+  });
+
+  it("keeps the original tag spelling when a filter matches on case", async () => {
+    const context = createTestContext();
+    const requests = await context.queries.listRequests("mentor_morgan", {
+      tag: "tutoring",
+    });
+    assert.deepEqual(requests.map((request) => request.tags), [
+      ["Calculus", "Tutoring"],
+    ]);
+  });
+
   it("hides staff note contents from a student", async () => {
     const context = createTestContext();
     const request = await context.queries.getRequest(
@@ -51,6 +77,26 @@ describe("QueryService", () => {
       ["note_public", "note_staff"],
     );
     assert.equal(request.visibleNoteCount, 2);
+  });
+
+  it("counts only student-visible notes in list summaries", async () => {
+    const context = createTestContext();
+    const requests = await context.queries.listRequests("student_steve");
+    const planning = requests.find(
+      (request) => request.id === "request_planning",
+    );
+
+    assert.equal(planning?.visibleNoteCount, 1);
+  });
+
+  it("counts staff notes in list summaries for staff", async () => {
+    const context = createTestContext();
+    const requests = await context.queries.listRequests("mentor_morgan");
+    const planning = requests.find(
+      (request) => request.id === "request_planning",
+    );
+
+    assert.equal(planning?.visibleNoteCount, 2);
   });
 
   it("forbids one student from opening another student's request", async () => {

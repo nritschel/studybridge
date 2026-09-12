@@ -23,12 +23,7 @@ export function canClaimRequest(
   actor: Account,
   request: HelpRequest,
 ): boolean {
-  return (
-    actor.active &&
-    isStaff(actor) &&
-    request.status !== "resolved" &&
-    (request.assigneeId === undefined || request.assigneeId === actor.id)
-  );
+  return actor.active && isStaff(actor) && request.status !== "resolved";
 }
 
 export function canResolveRequest(
@@ -47,6 +42,12 @@ export function canAddNote(actor: Account): boolean {
   return actor.active && isStaff(actor);
 }
 
-export function canAnonymizeAccount(actor: Account): boolean {
-  return actor.active && actor.role === "coordinator";
+// Closing an account means anonymizing it. Anyone may close their own
+// account; only a coordinator may close somebody else's.
+export function canAnonymizeAccount(
+  actor: Account,
+  target: Account,
+): boolean {
+  return actor.active &&
+    (actor.role === "coordinator" || actor.id === target.id);
 }

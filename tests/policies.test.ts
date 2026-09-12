@@ -33,8 +33,15 @@ describe("authorization policies", () => {
     assert.equal(canCreateRequest(mentor), false);
     assert.equal(canCreateRequest(coordinator), false);
     assert.equal(canAddNote(mentor), true);
-    assert.equal(canAnonymizeAccount(mentor), false);
-    assert.equal(canAnonymizeAccount(coordinator), true);
+    assert.equal(canAnonymizeAccount(mentor, student), false);
+    assert.equal(canAnonymizeAccount(coordinator, student), true);
+  });
+
+  it("lets anyone close their own account but not somebody else's", () => {
+    assert.equal(canAnonymizeAccount(student, student), true);
+    assert.equal(canAnonymizeAccount(student, otherStudent), false);
+    assert.equal(canAnonymizeAccount(mentor, mentor), true);
+    assert.equal(canAnonymizeAccount(coordinator, otherStudent), true);
   });
 
   it("lets students view only their own requests", () => {
@@ -48,6 +55,7 @@ describe("authorization policies", () => {
     assert.equal(canClaimRequest(inactiveMentor, openRequest), false);
     assert.equal(canCreateRequest({ ...student, active: false }), false);
     assert.equal(canAddNote(inactiveMentor), false);
+    assert.equal(canAnonymizeAccount(inactiveMentor, inactiveMentor), false);
   });
 
   it("shows staff notes only to staff", () => {

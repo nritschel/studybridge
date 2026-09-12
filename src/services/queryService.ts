@@ -26,22 +26,30 @@ export class QueryService {
     ]);
     const accountsById = new Map(accounts.map((account) => [account.id, account]));
 
+    const normalizedTagFilter = filters.tag?.trim().toLocaleLowerCase();
+    const tagFilter =
+      normalizedTagFilter === undefined || normalizedTagFilter.length === 0
+        ? undefined
+        : normalizedTagFilter;
+
     const visible = requests
       .filter((request) => canViewRequest(viewer, request))
       .filter((request) =>
         filters.status === undefined ? true : request.status === filters.status,
       )
-      // Intentionally case-sensitive. Work item 001 describes the bug.
+      // Tags keep their original spelling for display, compare case-insensitively here.
       .filter((request) =>
-        filters.tag === undefined ? true : request.tags.includes(filters.tag),
+        tagFilter === undefined
+          ? true
+          : request.tags.some((tag) => tag.toLocaleLowerCase() === tagFilter),
       )
       .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt));
 
     return Promise.all(
       visible.map(async (request) => {
         const notes = await this.repository.listNotesForRequest(request.id);
-        // Work item 002: this count currently reveals staff-note existence.
-        return this.toSummary(request, accountsById, notes.length);
+        const visibleNotes = notes.filter((note) => canViewNote(viewer, note));
+        return this.toSummary(request, accountsById, visibleNotes.length);
       }),
     );
   }

@@ -89,14 +89,14 @@ export class RequestService {
     if (request.status === "resolved") {
       throw conflict("Resolved requests cannot be claimed.");
     }
+    if (!canClaimRequest(actor, request)) {
+      throw forbidden("Only active mentors and coordinators can claim requests.");
+    }
     if (request.assigneeId === actor.id) {
       return request;
     }
     if (request.assigneeId !== undefined) {
       throw conflict("This request is already assigned to another mentor.");
-    }
-    if (!canClaimRequest(actor, request)) {
-      throw forbidden("Only active mentors and coordinators can claim requests.");
     }
 
     const occurredAt = iso(this.clock.now());
@@ -177,8 +177,8 @@ export class RequestService {
     if (body.length === 0) {
       throw badRequest("A note cannot be empty.");
     }
-    // Intentionally counts UTF-16 code units. Work item 003 describes the bug.
-    if (body.length > 500) {
+    // The limit is 500 Unicode code points.
+    if ([...body].length > 500) {
       throw badRequest("A note cannot be longer than 500 characters.");
     }
 
